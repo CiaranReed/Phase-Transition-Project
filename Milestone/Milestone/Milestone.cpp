@@ -8,16 +8,14 @@ using namespace std;
 //constants
 
 const int range = 32;
-const int Nsweeps = 30;
-const int particleN0 = pow(range, 2);
+const int Nsweeps = 100;
+const int sweepsPerMag = 1;   //make sure that Nsweeps / sweepsPerMag is an integer or code will break!!!
 const double J = 0.5; //interaciton strength for neighbours (1 for milestone)
 const double B = -0.05; //external mag field strength for whole lattice
-//const double T = 100; //K
-//const double kb = 1.380649 * pow(10, -23); //J/K
 const double kbt = 1;  // meV   26 is from the notes for room temp, lower means lower partition means less chance of random fluctuation
-//const double kbt = T * kb;
+const int particleN0 = pow(range, 2);
+const int dataPoints = 1 + Nsweeps / sweepsPerMag;
 
-//currently partition is too big, needs to be closer to 0.5
 
 
 //if particle flips to be parallel with adjacent spins, then -J.S1.S2 is  negative as S1.S2 is positive, 
@@ -301,8 +299,8 @@ int main()
 {
     srand((unsigned int)time(NULL));
     vector<particle> lattice(particleN0);
-    int sweepsHistory[Nsweeps+1];
-    double magnetisationHistory[Nsweeps+1];
+    int sweepsHistory[dataPoints];
+    double magnetisationHistory[dataPoints];
 
     for (int i = 0; i < particleN0; i++)
     {
@@ -311,17 +309,22 @@ int main()
 
     magnetisationHistory[0] = calculateMagnetisation(lattice);
     sweepsHistory[0] = 0;
+    //set the first value of the data
 
-    for (int i = 0; i < Nsweeps; i++)
+    for (int i = 1; i < Nsweeps + 1; i++) //for each sweep
     {
        lattice = performSweep(lattice);
-       magnetisationHistory[i+1] = calculateMagnetisation(lattice);
-       sweepsHistory[i+1] = i + 1;
+       if (i % sweepsPerMag == 0)
+       {
+           magnetisationHistory[i/sweepsPerMag] = calculateMagnetisation(lattice);
+           sweepsHistory[i/sweepsPerMag] = i;
+       }
+      
     }
-    printHistory(magnetisationHistory, sweepsHistory,Nsweeps); //at the moment we are finding the magnetisation after every sweep
+    printHistory(magnetisationHistory, sweepsHistory,dataPoints); //at the moment we are finding the magnetisation after every sweep
     ofstream file("magnetisation data.txt");
-    file << Nsweeps;
-    for (int i = 0; i < Nsweeps +1; i++)
+    file << dataPoints;
+    for (int i = 0; i < dataPoints; i++)
     {
         file << "\n";
         file << sweepsHistory[i];

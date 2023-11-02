@@ -1,7 +1,12 @@
 import numpy
 import matplotlib.pyplot as plt
-f = open("C:\\Users\\Ciaran Reed\\source\\repos\\CiaranReed\\ComputingProject\\Milestone\\Milestone\\magnetisation data.txt", "r")
-Ndata = int(f.readline()) + 1 
+import os
+
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(script_dir, "magnetisation data.txt")
+f = open(file_path,"r")
+Ndata = int(f.readline())
 shistory = numpy.empty(Ndata)
 mhistory = numpy.empty(Ndata)
 for i in range (0, Ndata):
