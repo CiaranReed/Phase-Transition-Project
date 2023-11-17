@@ -3,11 +3,12 @@
 #include <map>
 #include <fstream>
 #include <vector>
+#include <chrono>
 using namespace std;
-
+using namespace std::chrono;
 //constants
 
-const int range = 32;
+const int range = 200;
 const int Nsweeps = 100;
 const int sweepsPerMag = 1;   //make sure that Nsweeps / sweepsPerMag is an integer or code will break!!!
 const double J = 0.5; //interaciton strength for neighbours (1 for milestone)
@@ -15,6 +16,8 @@ const double B = -0.05; //external mag field strength for whole lattice
 const double kbt = 1;  // meV   26 is from the notes for room temp, lower means lower partition means less chance of random fluctuation
 const int particleN0 = pow(range, 2);
 const int dataPoints = 1 + Nsweeps / sweepsPerMag;
+
+
 
 
 
@@ -27,154 +30,28 @@ const int dataPoints = 1 + Nsweeps / sweepsPerMag;
 
 class particle
 {
-private: 
-    unsigned int ID;
-    bool spin; //up == true, down == false
-    int spinValue;
-
+    
 public:
     particle() {};
+    int spin = 0;
+    int neighbours[4] = { 0,0,0,0 };
+
     particle(int identifier)
     {
-        setSpin();
-        setID(identifier);
-        setNeighbours();
+        setInitialSpin();
+        setNeighbours(identifier);
     }
-    int neighbours[4];
-
-    bool getSpin()
-    {
-        return spin;
-    }
-
-    int getID()
-    {
-        return ID;
-    }
-
-    int sumAdjacentSpins(vector<particle> lattice)
-    {
-        int count = 0;
-        for (int i = 0; i < 4; i++)
-        {
-            if (lattice[neighbours[i]].getSpin())
-            {
-                count++;
-            }
-            else
-            {
-                count--;
-            }
-        }
-        return count;
- 
-    }
-    
-    void setSpin()
+         
+    void setInitialSpin()
     {
         spin = rand() % 2; //assign a random spin to the particle
-        if (spin)
+        if (spin != 1)
         {
-            spinValue = 1;
+            spin = -1;
         }
-        else
-        {
-            spinValue = -1;
-        }
-    }
+    } 
 
-    void flipSpin()
-    {
-        if (spin)
-        {
-            spin = false;
-            spinValue = -1;
-        }
-        else
-        {
-            spin = true;
-            spinValue = 1;
-        }
-    }
-
-    int getSpinValue()
-    {
-        return spinValue;
-    }
-
-    double calculateEnergyChange(vector<particle> lattice)  //before we flip, find energy change if we do flip
-    {
-        return -2 * (J * sumAdjacentSpins(lattice) + B) * (-1 * spinValue);
-    }
-
-    void setID(int identifier)
-    {
-        ID = identifier;
-    }
-
-    double findPartition( double E)
-    {
-        return exp((-1 * E) / kbt);
-    }
-
-    void sweepWithInfo(vector<particle> lattice)
-    {
-        cout << "\n For particle ";
-        cout << ID;
-        cout << "\n Spin = ";
-        cout << getSpinValue();
-        cout << "\n Sum of adjacent spins = ";
-        cout << sumAdjacentSpins(lattice);
-        double delE = calculateEnergyChange(lattice);
-         cout << "\n DelE = ";
-         cout << delE;
-        double partition = findPartition(delE);
-         cout << "\n Partition = ";
-         cout << partition;
-        if (partition > 1)
-        {
-            flipSpin();
-            cout << "\n";
-            cout << " as partition is > 1, its Had its spin flipped";
-        }
-        else
-        {
-            double r = ((double)rand() / (RAND_MAX));
-            if (partition > r)
-            {
-                 flipSpin();
-                 cout << "\n r = ";
-                 cout << r;
-                 cout << "\n as partition is > r, its Had its spin flipped";
-            }
-            else
-            {               
-                cout << "\n r = ";
-                cout << r;
-                cout << "\n as partition < r, it Did not have its spin flipped";
-            }
-        }
-        cout << "\n \n";
-    }
-
-    void sweep(vector<particle> lattice)
-    {
-        double partition = findPartition( calculateEnergyChange(lattice));
-        if (partition > 1)
-        {
-            flipSpin();
-        }
-        else
-        {
-            double r = ((double)rand() / (RAND_MAX));
-            if (partition > r)
-            {
-                flipSpin();
-            }        
-        }
-    }
-
-    void setNeighbours()
+    void setNeighbours(int ID)
     {
         int temporaryID = ID + 1;
         if (temporaryID % range == 0) //check if on right
@@ -216,45 +93,18 @@ public:
     }
 };
 
-
-
-double countTotalSpinUp(vector<particle> lattice)
+double calculateMagnetisation(vector<particle> lattice)
 {
     int counter = 0;
     for (long i = 0; i < particleN0; i++)
     {
-        if (lattice[i].getSpin())
+        if (lattice[i].spin == 1)
         {
             counter++;
         }
     }
-    return counter;
-}
-
-double countTotalSpinDown(vector<particle> lattice)
-{
-    return (particleN0 - countTotalSpinUp(lattice));
-}
-
-void printTotalSpinUp(vector<particle> lattice)
-{
-    cout << "\n The total number of spin ups is : ";
-    cout << countTotalSpinUp(lattice);
-    cout << "\n";
-}
-
-void printTotalSpinDown(vector<particle> lattice)
-{
-    cout << "\n The total number of spin downs is : ";
-    cout << countTotalSpinDown(lattice);
-    cout << "\n";
-}
-
-double calculateMagnetisation(vector<particle> lattice)
-{
-    double totalSpin = countTotalSpinUp(lattice) - countTotalSpinDown(lattice);
+    double totalSpin = 2*  counter - particleN0;
     return totalSpin / particleN0;
-
 }
 
 vector<particle> performSweep(vector<particle> lattice)
@@ -262,25 +112,35 @@ vector<particle> performSweep(vector<particle> lattice)
     for (int i = 0; i < particleN0; i++)
     {
         particle& info = lattice[i];
-        info.sweep(lattice);
+
+        int count = 0;
+        for (int j = 0; j < 4; j++)
+        {
+            if (lattice[info.neighbours[j]].spin == 1)
+            {
+                count++;
+            }
+            else
+            {
+                count--;
+            }
+        }
+        //count is sum of adjacent spins
+        double partitionContribution =  exp( (2 * (J * count + B) * (-1 * info.spin))  / kbt);
+        if (partitionContribution > 1)
+        {
+            info.spin = -info.spin;
+        }
+        else
+        {
+            double r = ((double)rand() / (RAND_MAX));
+            if (partitionContribution > r)
+            {
+                info.spin = -info.spin;
+            }
+        }
     }
     return lattice;
-}
-
-void performSweepWithInfo(vector<particle> lattice)
-{
-    printTotalSpinUp(lattice);
-    printTotalSpinDown(lattice);
-    for (int i = 0; i < particleN0; i++)
-    {
-        lattice[i].sweepWithInfo(lattice);
-    }
-    cout << "\n After sweeping : ";
-    printTotalSpinUp(lattice);
-    printTotalSpinDown(lattice);
-    cout << "\n Magnetisaiton = ";
-    cout << calculateMagnetisation(lattice);
-    cout << "\n--------------------------------------------------------------- \n ";
 }
 
 void printHistory(double mHistory[], int sHistory[], int nCalculations)
@@ -294,14 +154,13 @@ void printHistory(double mHistory[], int sHistory[], int nCalculations)
     }
 }
 
-
 int main()
 {
+    auto start = high_resolution_clock::now();
     srand((unsigned int)time(NULL));
     vector<particle> lattice(particleN0);
     int sweepsHistory[dataPoints];
     double magnetisationHistory[dataPoints];
-
     for (int i = 0; i < particleN0; i++)
     {
         lattice[i] = particle(i);  
@@ -313,14 +172,20 @@ int main()
 
     for (int i = 1; i < Nsweeps + 1; i++) //for each sweep
     {
-       lattice = performSweep(lattice);
-       if (i % sweepsPerMag == 0)
+       lattice = performSweep(lattice);  //do the sweep
+       if (i % sweepsPerMag == 0) // calculate the magnetisation of the lattice
        {
            magnetisationHistory[i/sweepsPerMag] = calculateMagnetisation(lattice);
            sweepsHistory[i/sweepsPerMag] = i;
-       }
-      
+       }  
     }
+
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    cout << "Time taken by program is : ";
+    cout << duration.count();
+    cout << " microsec " << endl;
+
     printHistory(magnetisationHistory, sweepsHistory,dataPoints); //at the moment we are finding the magnetisation after every sweep
     ofstream file("magnetisation data.txt");
     file << dataPoints;
