@@ -3,14 +3,15 @@
 #include <map>
 #include <fstream>
 #include <vector>
+#include <chrono>
 using namespace std;
-
+using namespace std::chrono;
 //constants
 
 const int range = 32;
-const int Nsweeps = 100;
+const int Nsweeps = 300;
 const int sweepsPerMag = 1;   //make sure that Nsweeps / sweepsPerMag is an integer or code will break!!!
-const double J = 0.5; //interaciton strength for neighbours (1 for milestone)
+const double J = 0.5; //interaciton strength for neighbours (0.5 for milestone)
 const double B = -0.05; //external mag field strength for whole lattice
 const double kbt = 1;  // meV   26 is from the notes for room temp, lower means lower partition means less chance of random fluctuation
 const int particleN0 = pow(range, 2);
@@ -216,8 +217,6 @@ public:
     }
 };
 
-
-
 double countTotalSpinUp(vector<particle> lattice)
 {
     int counter = 0;
@@ -254,7 +253,6 @@ double calculateMagnetisation(vector<particle> lattice)
 {
     double totalSpin = countTotalSpinUp(lattice) - countTotalSpinDown(lattice);
     return totalSpin / particleN0;
-
 }
 
 vector<particle> performSweep(vector<particle> lattice)
@@ -267,13 +265,14 @@ vector<particle> performSweep(vector<particle> lattice)
     return lattice;
 }
 
-void performSweepWithInfo(vector<particle> lattice)
+vector<particle> performSweepWithInfo(vector<particle> lattice)
 {
     printTotalSpinUp(lattice);
     printTotalSpinDown(lattice);
     for (int i = 0; i < particleN0; i++)
     {
-        lattice[i].sweepWithInfo(lattice);
+        particle& info = lattice[i];
+        info.sweepWithInfo(lattice);
     }
     cout << "\n After sweeping : ";
     printTotalSpinUp(lattice);
@@ -281,6 +280,7 @@ void performSweepWithInfo(vector<particle> lattice)
     cout << "\n Magnetisaiton = ";
     cout << calculateMagnetisation(lattice);
     cout << "\n--------------------------------------------------------------- \n ";
+    return lattice;
 }
 
 void printHistory(double mHistory[], int sHistory[], int nCalculations)
@@ -294,9 +294,9 @@ void printHistory(double mHistory[], int sHistory[], int nCalculations)
     }
 }
 
-
 int main()
 {
+    auto start = high_resolution_clock::now();
     srand((unsigned int)time(NULL));
     vector<particle> lattice(particleN0);
     int sweepsHistory[dataPoints];
@@ -319,9 +319,14 @@ int main()
            magnetisationHistory[i/sweepsPerMag] = calculateMagnetisation(lattice);
            sweepsHistory[i/sweepsPerMag] = i;
        }
-      
     }
-    printHistory(magnetisationHistory, sweepsHistory,dataPoints); //at the moment we are finding the magnetisation after every sweep
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    cout << "Time taken by program is : ";
+    cout << duration.count();
+    cout << " microsec " << endl;
+
+    //printHistory(magnetisationHistory, sweepsHistory,dataPoints); //at the moment we are finding the magnetisation after every sweep
     ofstream file("magnetisation data.txt");
     file << dataPoints;
     for (int i = 0; i < dataPoints; i++)
@@ -333,14 +338,12 @@ int main()
     }
     file.close();
     
+
     string filename = "ProduceGraphs.py";
     string command = "Python ";
     command += filename;
     system(command.c_str());
 
-    cout << "\n";
-
-
-    system("pause");
+   
   
 }
