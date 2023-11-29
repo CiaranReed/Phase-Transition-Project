@@ -8,14 +8,14 @@ using namespace std;
 using namespace std::chrono;
 //constants
 
-const int range = 200;
-const int Nsweeps = 100;
-const int sweepsPerMag = 1;   //make sure that Nsweeps / sweepsPerMag is an integer or code will break!!!
-const double J = 0.5; //interaciton strength for neighbours (1 for milestone)
-const double B = -0.05; //external mag field strength for whole lattice
-const double kbt = 1;  // meV   26 is from the notes for room temp, lower means lower partition means less chance of random fluctuation
-const int particleN0 = pow(range, 2);
-const int dataPoints = 1 + Nsweeps / sweepsPerMag;
+//const int range =200;
+//const int Nsweeps = 100;
+//const int sweepsPerMag = 1;   //make sure that Nsweeps / sweepsPerMag is an integer or code will break!!!
+//const double J = 0.2; //interaciton strength for neighbours (1 for milestone)
+//const double B = -0.05; //external mag field strength for whole lattice
+//const double kbt = 1;  // meV   26 is from the notes for room temp, lower means lower partition means less chance of random fluctuation
+//const int particleN0 = pow(range, 2);
+//const int dataPoints = 1 + Nsweeps / sweepsPerMag;
 
 
 
@@ -36,10 +36,10 @@ public:
     int spin = 0;
     int neighbours[4] = { 0,0,0,0 };
 
-    particle(int identifier)
+    particle(int identifier, int range)
     {
         setInitialSpin();
-        setNeighbours(identifier);
+        setNeighbours(identifier, range);
     }
          
     void setInitialSpin()
@@ -51,7 +51,7 @@ public:
         }
     } 
 
-    void setNeighbours(int ID)
+    void setNeighbours(int ID, int range)
     {
         int temporaryID = ID + 1;
         if (temporaryID % range == 0) //check if on right
@@ -93,92 +93,131 @@ public:
     }
 };
 
-double calculateMagnetisation(vector<particle> lattice)
+class simulation
 {
-    int counter = 0;
-    for (long i = 0; i < particleN0; i++)
+private:
+    double J = 0;
+    double B = 0;
+    double kbt = 0;
+    int range = 0;
+    int Nsweeps = 0;
+    int sweepsPerMag = 0;
+    int particleN0 = 0;
+    int dataPoints = 0;
+    vector<int> sweepsHistory;
+    vector<double> magnetisationHistory;
+    vector<particle> lattice;
+
+public: 
+    simulation() {};
+    simulation(double Jin, double Bin, double kbtin, int rangein, int Nsweepsin, int sweepsPerMagin)
     {
-        if (lattice[i].spin == 1)
+        J = Jin;
+        B = Bin;
+        kbt = kbtin;
+        range = rangein;
+        Nsweeps = Nsweepsin;
+        sweepsPerMag = sweepsPerMagin;
+        particleN0 = pow(range, 2);
+        dataPoints = 1 + Nsweeps / sweepsPerMag;
+        lattice.resize(particleN0);
+        sweepsHistory.resize(dataPoints);
+        magnetisationHistory.resize(dataPoints);
+        for (int i = 0; i < particleN0; i++)
         {
-            counter++;
+            lattice[i] = particle(i,range);
+        }  //initialise lattice
+        magnetisationHistory[0] = calculateMagnetisation();
+        sweepsHistory[0] = 0;
+        for (int i = 1; i < Nsweeps + 1; i++) //for each sweep
+        {
+            lattice = performSweep();  //do the sweep
+            if (i % sweepsPerMag == 0) // calculate the magnetisation of the lattice
+            {
+                magnetisationHistory[i / sweepsPerMag] = calculateMagnetisation();
+                sweepsHistory[i / sweepsPerMag] = i;
+            }
         }
     }
-    double totalSpin = 2*  counter - particleN0;
-    return totalSpin / particleN0;
-}
-
-vector<particle> performSweep(vector<particle> lattice)
-{
-    for (int i = 0; i < particleN0; i++)
+    double calculateMagnetisation()
     {
-        particle& info = lattice[i];
+        int counter = 0;
+        for (long i = 0; i < particleN0; i++)
+        {
+            if (lattice[i].spin == 1)
+            {
+                counter++;
+            }
+        }
+        double totalSpin = 2 * counter - particleN0;
+        return totalSpin / particleN0;
+    }
+    vector<particle> performSweep()
+    {
+        for (int i = 0; i < particleN0; i++)
+        {
+            particle& info = lattice[i];
 
-        int count = 0;
-        for (int j = 0; j < 4; j++)
-        {
-            if (lattice[info.neighbours[j]].spin == 1)
+            int count = 0;
+            for (int j = 0; j < 4; j++)
             {
-                count++;
+                if (lattice[info.neighbours[j]].spin == 1)
+                {
+                    count++;
+                }
+                else
+                {
+                    count--;
+                }
             }
-            else
-            {
-                count--;
-            }
-        }
-        //count is sum of adjacent spins
-        double partitionContribution =  exp( (2 * (J * count + B) * (-1 * info.spin))  / kbt);
-        if (partitionContribution > 1)
-        {
-            info.spin = -info.spin;
-        }
-        else
-        {
-            double r = ((double)rand() / (RAND_MAX));
-            if (partitionContribution > r)
+            //count is sum of adjacent spins
+            double partitionContribution = exp((2 * (J * count + B) * (-1 * info.spin)) / kbt);
+            if (partitionContribution > 1)
             {
                 info.spin = -info.spin;
             }
+            else
+            {
+                double r = ((double)rand() / (RAND_MAX));
+                if (partitionContribution > r)
+                {
+                    info.spin = -info.spin;
+                }
+            }
+        }
+        return lattice;
+    }
+    void printHistory()
+    {
+        for (int i = 0; i < dataPoints; i++)
+        {
+            cout << "\n Sweep Number : ";
+            cout << sweepsHistory[i];
+            cout << "\n Magnetisation : ";
+            cout << magnetisationHistory[i];
         }
     }
-    return lattice;
-}
-
-void printHistory(double mHistory[], int sHistory[], int nCalculations)
-{
-    for (int i = 0; i < nCalculations; i++)
+    void saveToFile(string filename)
     {
-        cout << "\n Sweep Number : ";
-        cout << sHistory[i];
-        cout << "\n Magnetisation : ";
-        cout << mHistory[i];
+        ofstream file(filename);
+        file << dataPoints;
+        for (int i = 0; i < dataPoints; i++)
+        {
+            file << "\n";
+            file << sweepsHistory[i];
+            file << ",";
+            file << magnetisationHistory[i];
+        }
+        file.close();
     }
-}
+};
 
 int main()
 {
     auto start = high_resolution_clock::now();
     srand((unsigned int)time(NULL));
-    vector<particle> lattice(particleN0);
-    int sweepsHistory[dataPoints];
-    double magnetisationHistory[dataPoints];
-    for (int i = 0; i < particleN0; i++)
-    {
-        lattice[i] = particle(i);  
-    }  //initialise lattice
-
-    magnetisationHistory[0] = calculateMagnetisation(lattice);
-    sweepsHistory[0] = 0;
-    //set the first value of the data
-
-    for (int i = 1; i < Nsweeps + 1; i++) //for each sweep
-    {
-       lattice = performSweep(lattice);  //do the sweep
-       if (i % sweepsPerMag == 0) // calculate the magnetisation of the lattice
-       {
-           magnetisationHistory[i/sweepsPerMag] = calculateMagnetisation(lattice);
-           sweepsHistory[i/sweepsPerMag] = i;
-       }  
-    }
+   
+    simulation sim1 = simulation(0.5, 0.05, 1, 32, 100, 1);
 
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(end - start);
@@ -186,18 +225,9 @@ int main()
     cout << duration.count();
     cout << " microsec " << endl;
 
-    printHistory(magnetisationHistory, sweepsHistory,dataPoints); //at the moment we are finding the magnetisation after every sweep
-    ofstream file("magnetisation data.txt");
-    file << dataPoints;
-    for (int i = 0; i < dataPoints; i++)
-    {
-        file << "\n";
-        file << sweepsHistory[i];
-        file << ",";
-        file << magnetisationHistory[i];
-    }
-    file.close();
-    
+    sim1.printHistory();
+    sim1.saveToFile("magnetisation data.txt");
+
     string filename = "ProduceGraphs.py";
     string command = "Python ";
     command += filename;
