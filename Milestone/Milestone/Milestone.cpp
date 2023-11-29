@@ -28,6 +28,65 @@ using namespace std::chrono;
 // whichever system has lowest potential (energy) is what it tends to
 
 
+
+
+double findMean(vector<double> arr, int cutoff, bool beforeCutoff) //cutoff inclusive, eg cutoff 3 means up to and including the element 3
+{
+    double mean = 0;
+    if (beforeCutoff)
+    {
+        for (int i = 0; i <= cutoff; i++)
+        {
+            mean += arr[i];
+        }
+        mean = mean / (cutoff + 1);
+    }
+    else
+    {
+        for (int i = cutoff; i < arr.size(); i++)
+        {
+            mean += arr[i];
+        }
+        mean = mean / (arr.size() - cutoff);
+    }
+   
+    return mean;
+}
+
+double findStdDeviation(vector<double> arr, int cutoff, bool before)
+{
+    double mean = findMean(arr, cutoff, before);
+    double stdDev = 0;
+    if (before)
+    {
+        for (int i = 0; i <= cutoff; i++)
+        {
+
+            stdDev += pow((arr[i] - mean), 2);
+        }
+        stdDev = sqrt((stdDev / cutoff));
+    }
+    else
+    {
+        for (int i = cutoff; i < arr.size(); i++)
+        {
+
+            stdDev += pow((arr[i] - mean), 2);
+        }
+
+        stdDev = sqrt((stdDev / (arr.size() - cutoff -1)));
+    }
+    
+    return stdDev;
+        
+}
+
+double findStdError(vector<double> arr, int cutoff, bool before)
+{
+    return findStdDeviation(arr, cutoff, before) / cutoff;
+}  //assumes whole array
+
+
 class particle
 {
     
@@ -104,6 +163,8 @@ private:
     int sweepsPerMag = 0;
     int particleN0 = 0;
     int dataPoints = 0;
+    double meanMag = 0;
+    double stdError = 0;
     vector<int> sweepsHistory;
     vector<double> magnetisationHistory;
     vector<particle> lattice;
@@ -138,6 +199,7 @@ public:
                 sweepsHistory[i / sweepsPerMag] = i;
             }
         }
+        findResults();
     }
     double calculateMagnetisation()
     {
@@ -210,23 +272,80 @@ public:
         }
         file.close();
     }
+    int findCutoff()
+    {
+        vector<double> mean(dataPoints);
+        vector<double> stdDev(dataPoints);
+        int cutoffValue = 0;
+        mean[0] = magnetisationHistory[0];
+        stdDev[0] = 0;
+        for (int i = 1; i < dataPoints; i++) //for every data point after the first one
+        {
+            mean[i] = findMean(magnetisationHistory, i,true); //up to and incuding the index i
+            stdDev[i] = findStdDeviation(magnetisationHistory, i,true);
+            if (stdDev[i] < stdDev[i - 1] && cutoffValue == 0)
+            {
+                cutoffValue = i + 5;
+                return cutoffValue;
+            }
+        }
+    }
+    void findResults()
+    {
+        int cutoffValue = findCutoff();  //cutoff is inclusive, eg 17 would use sweep 17 to the end, so for 20 sweeps (21 data points) cutoff 17 would use index 17 to 20 giving 4 data points
+        meanMag = findMean(magnetisationHistory, cutoffValue, false);
+        double stdDev = findStdDeviation(magnetisationHistory, cutoffValue, false);
+        double usableData = dataPoints - cutoffValue;
+        stdError = stdDev / (usableData);
+    }
+    void printResults()
+    {
+        cout << "\n final mean = ";
+        cout << meanMag;
+        cout << "\n final std error = ";
+        cout << stdError;
+    }
+    double getMeanMag()
+    {
+        return meanMag;
+    }
+    double getStdError()
+    {
+        return stdError;
+    }
 };
 
 int main()
 {
     auto start = high_resolution_clock::now();
     srand((unsigned int)time(NULL));
-   
-    simulation sim1 = simulation(0.5, 0.05, 1, 32, 100, 1);
+    //simulation ( J, B, Kbt, Range, Sweeps, Sweeps per magnetisaton calculation)
+    int Nsims = 10;
+    vector<simulation> allSims(Nsims);
+    vector<double> magnetisations(Nsims);
+    vector<double> stdErrors(Nsims);
+    for (int i = 0; i < Nsims; i++)
+    {
+        allSims[i] = simulation(0.5, -0.05, 1, 100, 100, 1);
+        allSims[i].printResults();
+        magnetisations[i] = allSims[i].getMeanMag();
+        stdErrors[i] = allSims[i].getStdError();
+    }
+    double totalMeanMag = findMean(magnetisations, Nsims -1 , true);
+    double totalStdErorr = findStdDeviation(magnetisations, Nsims -1 , true);
+    cout << "\n Total Mean Mag = ";
+    cout << totalMeanMag;
+    cout << "\n total Std Error = ";
+    cout << totalStdErorr;
 
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(end - start);
-    cout << "Time taken by program is : ";
+    cout << "\nTime taken by program is : ";
     cout << duration.count();
     cout << " microsec " << endl;
 
-    sim1.printHistory();
-    sim1.saveToFile("magnetisation data.txt");
+
+    allSims[1].saveToFile("magnetisation data.txt");
 
     string filename = "ProduceGraphs.py";
     string command = "Python ";
@@ -239,3 +358,6 @@ int main()
     system("pause");
   
 }
+//cutoff = 4
+//mean = -0.34368
+//std dev = 
