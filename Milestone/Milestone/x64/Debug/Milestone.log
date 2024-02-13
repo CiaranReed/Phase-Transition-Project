@@ -1,6 +1,5 @@
 ﻿  Milestone.cpp
-C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(126,57): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(142,57): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(182,25): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(292): warning C4715: 'simulation::findCutoff': not all control paths return a value
+C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(159,57): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(175,57): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\Milestone\Milestone.cpp(221,25): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
   Milestone.vcxproj -> C:\Users\Ciaran Reed\source\repos\CiaranReed\Phase-Transition-Project\Milestone\x64\Debug\Milestone.exe
